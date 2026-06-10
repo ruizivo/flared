@@ -31,7 +31,14 @@ const app = new Elysia()
   .use(hostnameRoutes)
   .use(zoneRoutes)
   .use(wsRoutes)
-  .get('/*', () => isDev ? new Response('dev mode') : Bun.file(indexHtml))
+  .get('/*', ({ request }) => {
+    if (isDev) return new Response('dev mode')
+    // arquivos com extensão são assets — deixa o staticPlugin resolver (ou 404)
+    if (/\.[a-zA-Z0-9]+$/.test(new URL(request.url).pathname)) {
+      return new Response('Not Found', { status: 404 })
+    }
+    return Bun.file(indexHtml)
+  })
   .listen(PORT)
 
 console.log(`🚀 Flared backend rodando em http://localhost:${PORT}`)
