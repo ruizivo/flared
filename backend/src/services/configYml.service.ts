@@ -41,5 +41,7 @@ export function writeConfigYml(tunnel: Tunnel) {
   const content = generateConfigYml(tunnel)
   const path = getConfigYmlPath(tunnel.tunnelId)
   writeFileSync(path, content)
+  const activeCount = tunnel.hostnames.filter(h => h.active).length
+  console.log(`[config-yml] config.yml escrito para ${tunnel.name}: ${activeCount} hostname(s) ativo(s) → ${path}`)
   return path
 }

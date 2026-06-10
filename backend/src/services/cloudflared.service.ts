@@ -39,6 +39,7 @@ export function getLogs(tunnelId: string): string[] {
 
 export function startTunnel(tunnelId: string): boolean {
   if (processes.has(tunnelId)) {
+    console.log(`[cloudflared] tunnel ${tunnelId} já está rodando`)
     return false
   }
 
@@ -46,6 +47,9 @@ export function startTunnel(tunnelId: string): boolean {
   if (!existsSync(configPath)) {
     throw new Error(`config.yml não encontrado para tunnel ${tunnelId}`)
   }
+
+  console.log(`[cloudflared] iniciando tunnel ${tunnelId}`)
+  console.log(`[cloudflared] config: ${configPath}`)
 
   const proc = spawn('cloudflared', [
     'tunnel',
@@ -71,25 +75,65 @@ export function startTunnel(tunnelId: string): boolean {
   })
 
   proc.on('exit', (code) => {
-    addLog(tunnelId, `[flared] processo encerrado com código ${code}`)
-    processes.delete(tunnelId)
+    const msg = `[flared] processo encerrado com código ${code}`
+    addLog(tunnelId, msg)
+    console.log(`[cloudflared] ${tunnelId}: ${msg}`)
+    // só remove do map se este ainda é o processo ativo — evita race condition no restart
+    if (processes.get(tunnelId)?.process === proc) {
+      processes.delete(tunnelId)
+    }
   })
 
+  console.log(`[cloudflared] tunnel ${tunnelId} iniciado (pid ${proc.pid})`)
   return true
 }
 
 export function stopTunnel(tunnelId: string): boolean {
   const tp = processes.get(tunnelId)
-  if (!tp) return false
+  if (!tp) {
+    console.log(`[cloudflared] stopTunnel: ${tunnelId} não estava rodando`)
+    return false
+  }
+  console.log(`[cloudflared] parando tunnel ${tunnelId} (pid ${tp.process.pid})`)
   tp.process.kill('SIGTERM')
   processes.delete(tunnelId)
   return true
 }
 
-export function restartTunnel(tunnelId: string): boolean {
-  stopTunnel(tunnelId)
-  setTimeout(() => startTunnel(tunnelId), 500)
-  return true
+export function restartTunnel(tunnelId: string): void {
+  const tp = processes.get(tunnelId)
+  if (!tp) {
+    console.log(`[cloudflared] restartTunnel: ${tunnelId} não estava rodando, iniciando...`)
+    try { startTunnel(tunnelId) } catch (err: any) {
+      console.error(`[cloudflared] erro ao iniciar ${tunnelId}: ${err.message}`)
+    }
+    return
+  }
+
+  console.log(`[cloudflared] reiniciando tunnel ${tunnelId} (pid ${tp.process.pid})`)
+  // remove do map antes de matar para que startTunnel possa ser chamado sem conflito
+  processes.delete(tunnelId)
+
+  const doStart = () => {
+    console.log(`[cloudflared] processo anterior encerrado, iniciando novo para ${tunnelId}`)
+    try { startTunnel(tunnelId) } catch (err: any) {
+      console.error(`[cloudflared] erro ao reiniciar ${tunnelId}: ${err.message}`)
+    }
+  }
+
+  tp.process.once('exit', doStart)
+  tp.process.kill('SIGTERM')
+
+  // fallback: se SIGTERM não resultar em exit em 3s, força reinício
+  setTimeout(() => {
+    tp.process.removeListener('exit', doStart)
+    if (!processes.has(tunnelId)) {
+      console.log(`[cloudflared] timeout SIGTERM para ${tunnelId}, forçando reinício`)
+      try { startTunnel(tunnelId) } catch (err: any) {
+        console.error(`[cloudflared] erro no reinício forçado de ${tunnelId}: ${err.message}`)
+      }
+    }
+  }, 3000)
 }
 
 export function isTunnelRunning(tunnelId: string): boolean {
@@ -112,11 +156,13 @@ export async function getCloudflaredVersion(): Promise<string> {
 
 export async function updateCloudflared(): Promise<string> {
   return new Promise((resolve, reject) => {
+    console.log('[cloudflared] iniciando atualização...')
     const proc = spawn('cloudflared', ['update'])
     let output = ''
     proc.stdout.on('data', (d: Buffer) => output += d.toString())
     proc.stderr.on('data', (d: Buffer) => output += d.toString())
     proc.on('exit', (code) => {
+      console.log(`[cloudflared] atualização encerrada com código ${code}`)
       if (code === 0) resolve(output.trim())
       else reject(new Error(output.trim()))
     })
@@ -126,35 +172,36 @@ export async function updateCloudflared(): Promise<string> {
 export async function runCloudflaredLogin(): Promise<{ url: string; certPath: string }> {
   return new Promise((resolve, reject) => {
     const certPath = getCertPath()
+    console.log(`[cloudflared] iniciando login (cert destino: ${certPath})`)
     const proc = spawn('cloudflared', ['tunnel', '--origincert', certPath, 'login'])
     let resolved = false
 
-    proc.stdout.on('data', (d: Buffer) => {
-      const text = d.toString()
+    const handleOutput = (text: string) => {
       const match = text.match(/https:\/\/dash\.cloudflare\.com\/argotunnel[^\s]+/)
       if (match && !resolved) {
         resolved = true
+        console.log(`[cloudflared] URL de login obtida`)
         resolve({ url: match[0], certPath })
       }
-    })
+    }
 
-    proc.stderr.on('data', (d: Buffer) => {
-      const text = d.toString()
-      const match = text.match(/https:\/\/dash\.cloudflare\.com\/argotunnel[^\s]+/)
-      if (match && !resolved) {
-        resolved = true
-        resolve({ url: match[0], certPath })
-      }
-    })
+    proc.stdout.on('data', (d: Buffer) => handleOutput(d.toString()))
+    proc.stderr.on('data', (d: Buffer) => handleOutput(d.toString()))
 
     proc.on('exit', (code) => {
+      console.log(`[cloudflared] login encerrado com código ${code}`)
       if (!resolved) reject(new Error(`cloudflared login encerrou com código ${code}`))
 
       // cloudflared escreve o cert em ~/.cloudflared/cert.pem — copia para CONFIG_DIR
       const defaultCert = join(process.env.HOME || '/root', '.cloudflared', 'cert.pem')
       const targetCert = getCertPath()
       if (code === 0 && existsSync(defaultCert) && !existsSync(targetCert)) {
-        try { copyFileSync(defaultCert, targetCert) } catch {}
+        try {
+          copyFileSync(defaultCert, targetCert)
+          console.log(`[cloudflared] cert.pem copiado de ${defaultCert} para ${targetCert}`)
+        } catch (err: any) {
+          console.error(`[cloudflared] erro ao copiar cert.pem: ${err.message}`)
+        }
       }
     })
 
@@ -167,6 +214,7 @@ export async function runCloudflaredLogin(): Promise<{ url: string; certPath: st
 export async function createTunnelCli(name: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const certPath = getCertPath()
+    console.log(`[cloudflared] criando tunnel "${name}" (cert: ${certPath})`)
     const proc = spawn('cloudflared', [
       'tunnel',
       '--origincert', certPath,
@@ -178,10 +226,15 @@ export async function createTunnelCli(name: string): Promise<string> {
     proc.stderr.on('data', (d: Buffer) => output += d.toString())
 
     proc.on('exit', (code) => {
+      console.log(`[cloudflared] criação do tunnel "${name}" encerrada com código ${code}`)
       if (code !== 0) return reject(new Error(output))
       const match = output.match(/Created tunnel .+ with id ([a-f0-9-]{36})/i)
-      if (match) resolve(match[1])
-      else reject(new Error(`não foi possível extrair tunnel ID: ${output}`))
+      if (match) {
+        console.log(`[cloudflared] tunnel criado: ${match[1]}`)
+        resolve(match[1])
+      } else {
+        reject(new Error(`não foi possível extrair tunnel ID: ${output}`))
+      }
     })
   })
 }

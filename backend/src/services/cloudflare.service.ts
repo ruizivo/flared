@@ -3,6 +3,8 @@ import type { CloudflareApiRecord, Zone } from '../types'
 const CF_API = 'https://api.cloudflare.com/client/v4'
 
 async function cfFetch(token: string, path: string, options?: RequestInit) {
+  const method = options?.method || 'GET'
+  console.log(`[cloudflare-api] ${method} ${path}`)
   const res = await fetch(`${CF_API}${path}`, {
     ...options,
     headers: {
@@ -13,7 +15,9 @@ async function cfFetch(token: string, path: string, options?: RequestInit) {
   })
   const data = await res.json() as any
   if (!data.success) {
-    throw new Error(data.errors?.[0]?.message || 'Cloudflare API error')
+    const msg = data.errors?.[0]?.message || 'Cloudflare API error'
+    console.error(`[cloudflare-api] erro em ${method} ${path}: ${msg}`)
+    throw new Error(msg)
   }
   return data.result
 }
@@ -32,6 +36,7 @@ export async function getZoneDetails(token: string, zoneId: string) {
 }
 
 export async function createCNAME(zone: Zone, hostname: string, tunnelId: string): Promise<string> {
+  console.log(`[cloudflare-api] criando CNAME: ${hostname} → ${tunnelId}.cfargotunnel.com (zone: ${zone.domain})`)
   const subdomain = hostname.replace(`.${zone.domain}`, '')
   const record = await cfFetch(zone.apiToken, `/zones/${zone.zoneId}/dns_records`, {
     method: 'POST',
@@ -43,15 +48,22 @@ export async function createCNAME(zone: Zone, hostname: string, tunnelId: string
       ttl: 1,
     }),
   })
+  console.log(`[cloudflare-api] CNAME criado (id: ${record.id})`)
   return record.id
 }
 
 export async function deleteCNAME(zone: Zone, hostname: string): Promise<void> {
+  console.log(`[cloudflare-api] deletando CNAME: ${hostname} (zone: ${zone.domain})`)
   const records = await listCNAMEs(zone, hostname)
+  if (records.length === 0) {
+    console.log(`[cloudflare-api] nenhum CNAME encontrado para ${hostname}`)
+    return
+  }
   for (const record of records) {
     await cfFetch(zone.apiToken, `/zones/${zone.zoneId}/dns_records/${record.id}`, {
       method: 'DELETE',
     })
+    console.log(`[cloudflare-api] CNAME ${record.id} deletado`)
   }
 }
 
@@ -73,5 +85,6 @@ export async function getAccountId(token: string, zoneId: string): Promise<strin
 }
 
 export async function listCloudflareTunnels(token: string, accountId: string): Promise<{ id: string; name: string; status: string; created_at: string }[]> {
+  console.log(`[cloudflare-api] listando tunnels da conta ${accountId}`)
   return cfFetch(token, `/accounts/${accountId}/cfd_tunnel?is_deleted=false`)
 }

@@ -273,3 +273,24 @@ O Dockerfile:
 - **O cloudflared não faz hot reload do config.yml** — sempre usar `restartTunnel()` após modificar
 - **WebSocket usa o `id` interno** (UUID do app-config), não o `tunnelId` do Cloudflare
 - **Múltiplos tunnels** rodam como processos separados no mesmo container, gerenciados pelo `Map<string, TunnelProcess>` em `cloudflared.service.ts`
+
+---
+
+## Armadilhas conhecidas
+
+### NODE_ENV em produção
+O `.env` local tem `NODE_ENV=development`. Se esse arquivo for copiado para o servidor, o frontend **não é servido** — o backend entra em modo dev, o `staticPlugin` não é carregado e todas as rotas retornam `"dev mode"` (tela em branco no browser).
+
+O `.env` do servidor **sempre** deve ter:
+```env
+NODE_ENV=production
+```
+
+### cloudflared escreve no diretório do cert
+O `cloudflared tunnel login` escreve `cert.pem` em `~/.cloudflared/cert.pem` (não no path passado via `--origincert`). O `cloudflared tunnel create` escreve as credenciais no mesmo diretório do cert — tipicamente `/config/{tunnelId}.json` quando o cert está em `/config/cert.pem`. O código copia automaticamente para o destino esperado em `/config/tunnels/{tunnelId}/{tunnelId}.json`.
+
+### Acesso ao host a partir do container
+Com Docker em rede bridge (sem `network_mode: host`), `localhost` dentro do container é o próprio container. Para acessar serviços da máquina host use `host.docker.internal`. Defina `FLARED_HOST_GATEWAY=host.docker.internal` no `.env` — o backend substitui automaticamente `localhost` e `127.0.0.1` no `config.yml` gerado para o cloudflared. No Linux, adicionar `extra_hosts: ["host.docker.internal:host-gateway"]` ao compose é necessário para que o DNS resolva.
+
+### API token para listar tunnels
+O token adicionado nas Zones precisa de permissão `Account → Cloudflare Tunnel → Read` para que a funcionalidade de importar tunnels existentes funcione. Tokens com apenas `Zone:DNS:Edit` retornam "Authentication error" ao tentar listar tunnels.

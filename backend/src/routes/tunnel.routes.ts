@@ -38,11 +38,13 @@ export const tunnelRoutes = new Elysia({ prefix: '/tunnels' })
       return { error: 'Tunnel não encontrado' }
     }
     const tunnel = config.tunnels[idx]
+    console.log(`[tunnel] deletando ${tunnel.name} (${tunnel.tunnelId})`)
     if (isTunnelRunning(tunnel.tunnelId)) {
       stopTunnel(tunnel.tunnelId)
     }
     config.tunnels.splice(idx, 1)
     saveConfig(config)
+    console.log(`[tunnel] ${tunnel.name} removido da configuração`)
     return { success: true }
   })
   .post('/:tunnelId/start', ({ params, set }) => {
@@ -53,11 +55,19 @@ export const tunnelRoutes = new Elysia({ prefix: '/tunnels' })
       return { error: 'Tunnel não encontrado' }
     }
     if (isTunnelRunning(tunnel.tunnelId)) {
+      console.log(`[tunnel] start: ${tunnel.name} já está rodando`)
       return { message: 'Tunnel já está rodando' }
     }
+    console.log(`[tunnel] iniciando ${tunnel.name} (${tunnel.tunnelId})`)
     tunnel.active = true
     saveConfig(config)
-    startTunnel(tunnel.tunnelId)
+    try {
+      startTunnel(tunnel.tunnelId)
+    } catch (err: any) {
+      console.error(`[tunnel] erro ao iniciar ${tunnel.name}: ${err.message}`)
+      set.status = 500
+      return { error: err.message }
+    }
     return { success: true }
   })
   .post('/:tunnelId/stop', ({ params, set }) => {
@@ -67,6 +77,7 @@ export const tunnelRoutes = new Elysia({ prefix: '/tunnels' })
       set.status = 404
       return { error: 'Tunnel não encontrado' }
     }
+    console.log(`[tunnel] parando ${tunnel.name} (${tunnel.tunnelId})`)
     tunnel.active = false
     saveConfig(config)
     stopTunnel(tunnel.tunnelId)
@@ -79,6 +90,7 @@ export const tunnelRoutes = new Elysia({ prefix: '/tunnels' })
       set.status = 404
       return { error: 'Tunnel não encontrado' }
     }
+    console.log(`[tunnel] reiniciando ${tunnel.name} (${tunnel.tunnelId})`)
     restartTunnel(tunnel.tunnelId)
     return { success: true }
   })
