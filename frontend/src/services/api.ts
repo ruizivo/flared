@@ -1,0 +1,78 @@
+import axios from 'axios'
+
+const api = axios.create({
+  baseURL: '/',
+})
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('flared_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('flared_token')
+      window.location.href = '/login'
+    }
+    return Promise.reject(err)
+  }
+)
+
+export const authApi = {
+  login: (password: string) =>
+    api.post<{ token: string }>('/auth/login', { password }),
+}
+
+export const setupApi = {
+  status: () => api.get<{ hasCert: boolean; hasTunnels: boolean }>('/setup/status'),
+  startLogin: () => api.post<{ url?: string; alreadyLoggedIn?: boolean }>('/setup/login'),
+  loginStatus: () => api.get<{ done: boolean }>('/setup/login/status'),
+  createTunnel: (name: string) => api.post('/setup/tunnel', { name }),
+  version: () => api.get<{ version: string }>('/setup/version'),
+  listCloudflareTunnels: () => api.get('/setup/tunnels/cloudflare'),
+  importTunnel: (tunnelId: string, name: string) =>
+    api.post('/setup/tunnel/import', { tunnelId, name }),
+}
+
+export const tunnelApi = {
+  list: () => api.get('/tunnels'),
+  get: (id: string) => api.get(`/tunnels/${id}`),
+  delete: (id: string) => api.delete(`/tunnels/${id}`),
+  start: (id: string) => api.post(`/tunnels/${id}/start`),
+  stop: (id: string) => api.post(`/tunnels/${id}/stop`),
+  restart: (id: string) => api.post(`/tunnels/${id}/restart`),
+  logs: (id: string) => api.get(`/tunnels/${id}/logs`),
+  systemVersion: () => api.get('/tunnels/system/version'),
+  systemUpdate: () => api.post('/tunnels/system/update'),
+}
+
+export const hostnameApi = {
+  list: (tunnelId: string) => api.get(`/tunnels/${tunnelId}/hostnames`),
+  create: (tunnelId: string, data: {
+    hostname: string
+    service: string
+    noTLSVerify: boolean
+    httpHostHeader: string
+  }) => api.post(`/tunnels/${tunnelId}/hostnames`, data),
+  update: (tunnelId: string, hostnameId: string, data: object) =>
+    api.patch(`/tunnels/${tunnelId}/hostnames/${hostnameId}`, data),
+  toggle: (tunnelId: string, hostnameId: string) =>
+    api.post(`/tunnels/${tunnelId}/hostnames/${hostnameId}/toggle`),
+  delete: (tunnelId: string, hostnameId: string) =>
+    api.delete(`/tunnels/${tunnelId}/hostnames/${hostnameId}`),
+}
+
+export const zoneApi = {
+  list: () => api.get('/zones'),
+  create: (data: { zoneId: string; apiToken: string; domain?: string }) =>
+    api.post('/zones', data),
+  update: (id: string, data: object) => api.put(`/zones/${id}`, data),
+  delete: (id: string) => api.delete(`/zones/${id}`),
+}
+
+export default api

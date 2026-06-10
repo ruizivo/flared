@@ -1,0 +1,41 @@
+export interface Zone {
+  id: string
+  zoneId: string
+  domain: string
+  apiToken: string
+}
+
+export interface Hostname {
+  id: string
+  hostname: string
+  service: string
+  noTLSVerify: boolean
+  httpHostHeader: string
+  active: boolean
+  zoneId: string
+}
+
+export interface Tunnel {
+  id: string
+  tunnelId: string
+  name: string
+  active: boolean
+  running: boolean
+  credentialsFile: string
+  hostnames: Hostname[]
+}
+
+export interface SetupStatus {
+  hasCert: boolean
+  hasTunnels: boolean
+  certPath: string
+}
+
+export interface CloudflareTunnel {
+  tunnelId: string
+  name: string
+  status: string
+  createdAt: string
+  imported: boolean
+  hasCredentials: boolean
+}

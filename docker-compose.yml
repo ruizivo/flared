@@ -1,0 +1,16 @@
+services:
+  flared:
+    build: .
+    container_name: flared
+    restart: unless-stopped
+    # ports não é usado com network_mode: host (container usa a porta do host diretamente)
+    # ports:
+    #   - "3000:3000"
+    volumes:
+      - ./config:/config
+    env_file: .env
+    network_mode: host
+    environment:
+      FLARED_PORT: "3000"
+      NODE_ENV: production
+      FLARED_CONFIG_DIR: /config
