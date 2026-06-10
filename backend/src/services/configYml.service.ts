@@ -3,13 +3,19 @@ import * as YAML from 'yaml'
 import type { Tunnel, CloudflaredConfig } from '../types'
 import { getConfigYmlPath, getCredentialsPath } from './config.service'
 
+function resolveService(service: string): string {
+  const gateway = process.env.FLARED_HOST_GATEWAY
+  if (!gateway) return service
+  return service.replace(/localhost/g, gateway).replace(/127\.0\.0\.1/g, gateway)
+}
+
 export function generateConfigYml(tunnel: Tunnel): string {
   const activeHostnames = tunnel.hostnames.filter(h => h.active)
 
   const ingress = activeHostnames.map(h => {
     const entry: any = {
       hostname: h.hostname,
-      service: h.service,
+      service: resolveService(h.service),
     }
     if (h.noTLSVerify || h.httpHostHeader) {
       entry.originRequest = {}
