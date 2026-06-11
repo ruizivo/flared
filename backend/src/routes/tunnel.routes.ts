@@ -107,6 +107,24 @@ export const tunnelRoutes = new Elysia({ prefix: '/tunnels' })
     const version = await getCloudflaredVersion()
     return { version }
   })
+  .get('/system/latest', async ({ set }) => {
+    try {
+      console.log('[cloudflared] consultando última versão no GitHub...')
+      const res = await fetch(
+        'https://api.github.com/repos/cloudflare/cloudflared/releases/latest',
+        { headers: { Accept: 'application/vnd.github.v3+json', 'User-Agent': 'flared-app' } }
+      )
+      if (!res.ok) throw new Error(`GitHub API retornou ${res.status}`)
+      const data = await res.json() as any
+      const latest = (data.tag_name as string).replace(/^v/, '')
+      console.log(`[cloudflared] última versão disponível: ${latest}`)
+      return { latest }
+    } catch (err: any) {
+      console.error(`[cloudflared] erro ao buscar versão mais recente: ${err.message}`)
+      set.status = 502
+      return { error: err.message }
+    }
+  })
   .post('/system/update', async ({ set }) => {
     try {
       const result = await updateCloudflared()

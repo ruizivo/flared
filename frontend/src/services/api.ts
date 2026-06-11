@@ -47,7 +47,8 @@ export const tunnelApi = {
   stop: (id: string) => api.post(`/tunnels/${id}/stop`),
   restart: (id: string) => api.post(`/tunnels/${id}/restart`),
   logs: (id: string) => api.get(`/tunnels/${id}/logs`),
-  systemVersion: () => api.get('/tunnels/system/version'),
+  systemVersion: () => api.get<{ version: string }>('/tunnels/system/version'),
+  systemLatest: () => api.get<{ latest: string }>('/tunnels/system/latest'),
   systemUpdate: () => api.post('/tunnels/system/update'),
 }
 
