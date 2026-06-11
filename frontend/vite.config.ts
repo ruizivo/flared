@@ -20,10 +20,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/auth': backendHttp,
-      '/setup': backendHttp,
-      '/tunnels': backendHttp,
-      '/zones': backendHttp,
+      '/api': backendHttp,
       '/ws': {
         target: backendWs,
         ws: true,

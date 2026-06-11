@@ -3,6 +3,7 @@ import { authApi } from '../services/api'
 
 interface AuthContextType {
   isAuthenticated: boolean
+  isLoading: boolean
   login: (password: string) => Promise<void>
   logout: () => void
 }
@@ -11,10 +12,12 @@ const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const token = localStorage.getItem('flared_token')
     setIsAuthenticated(!!token)
+    setIsLoading(false)
   }, [])
 
   const login = async (password: string) => {
@@ -29,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

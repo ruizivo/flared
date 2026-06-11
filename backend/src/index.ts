@@ -33,7 +33,6 @@ const app = new Elysia()
   .onRequest(({ request }) => {
     const { method, url } = request
     const path = new URL(url).pathname
-    // não loga polling de logs para não poluir
     if (!path.includes('/logs')) {
       console.log(`→ ${method} ${path}`)
     }
@@ -50,15 +49,19 @@ const app = new Elysia()
     console.error(`✗ ${code} ${path} — ${(error as Error).message}`)
   })
   .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
-  .use(authRoutes)
-  .use(setupRoutes)
-  .use(tunnelRoutes)
-  .use(hostnameRoutes)
-  .use(zoneRoutes)
+  // todas as rotas REST ficam sob /api — nunca conflitam com rotas do SPA
+  .group('/api', app => app
+    .use(authRoutes)
+    .use(setupRoutes)
+    .use(tunnelRoutes)
+    .use(hostnameRoutes)
+    .use(zoneRoutes)
+  )
+  // WebSocket permanece em /ws (não precisa de /api)
   .use(wsRoutes)
+  // SPA catch-all — serve index.html para qualquer rota não reconhecida
   .get('/*', ({ request }) => {
     if (isDev) return new Response('dev mode')
-    // arquivos com extensão são assets — deixa o staticPlugin resolver (ou 404)
     if (/\.[a-zA-Z0-9]+$/.test(new URL(request.url).pathname)) {
       return new Response('Not Found', { status: 404 })
     }
@@ -68,7 +71,6 @@ const app = new Elysia()
 
 console.log(`🚀 Flared backend rodando em http://localhost:${PORT}`)
 
-// retoma tunnels ativos ao iniciar
 const config = loadConfig()
 const activeTunnels = config.tunnels.filter(t => t.active)
 if (activeTunnels.length > 0) {
