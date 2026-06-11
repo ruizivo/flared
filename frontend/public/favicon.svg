@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- background -->
+  <rect width="32" height="32" rx="7" fill="#0f172a"/>
+
+  <!-- outer flame -->
+  <path d="M16 4
+    C 19 7, 23 11, 23 17
+    C 23 22, 20 26, 16 28
+    C 12 26,  9 22,  9 17
+    C  9 11, 13  7, 16  4 Z"
+    fill="url(#outer)"/>
+
+  <!-- inner flame core -->
+  <path d="M16 13
+    C 18.5 16, 19.5 19, 18.5 22
+    C 17.8 24.5, 17 25.5, 16 27
+    C 15  25.5, 14.2 24.5, 13.5 22
+    C 12.5 19, 13.5 16, 16 13 Z"
+    fill="url(#inner)"/>
+
+  <!-- top shimmer -->
+  <ellipse cx="14" cy="11" rx="1.5" ry="2.5" fill="white" opacity="0.12" transform="rotate(-15 14 11)"/>
+
+  <defs>
+    <linearGradient id="outer" x1="16" y1="4" x2="16" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#fb923c"/>
+      <stop offset="100%" stop-color="#b91c1c"/>
+    </linearGradient>
+    <linearGradient id="inner" x1="16" y1="13" x2="16" y2="27" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#fef08a"/>
+      <stop offset="70%"  stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+  </defs>
+</svg>
