@@ -7,7 +7,7 @@ import { authRoutes } from './routes/auth.routes'
 import { setupRoutes } from './routes/setup.routes'
 import { tunnelRoutes } from './routes/tunnel.routes'
 import { hostnameRoutes } from './routes/hostname.routes'
-import { zoneRoutes } from './routes/zone.routes'
+import { accountRoutes } from './routes/account.routes'
 import { wsRoutes } from './routes/ws.routes'
 import { loadConfig } from './services/config.service'
 import { startTunnel } from './services/cloudflared.service'
@@ -55,7 +55,7 @@ const app = new Elysia()
     .use(setupRoutes)
     .use(tunnelRoutes)
     .use(hostnameRoutes)
-    .use(zoneRoutes)
+    .use(accountRoutes)
   )
   // WebSocket permanece em /ws (não precisa de /api)
   .use(wsRoutes)

@@ -1,8 +1,13 @@
-export interface Zone {
+export interface Account {
   id: string
-  zoneId: string
-  domain: string
+  name: string
   apiToken: string
+  zoneCount?: number
+}
+
+export interface CfZone {
+  id: string
+  name: string
 }
 
 export interface Hostname {
@@ -12,7 +17,7 @@ export interface Hostname {
   noTLSVerify: boolean
   httpHostHeader: string
   active: boolean
-  zoneId: string
+  cfZoneId: string
 }
 
 export interface Tunnel {
@@ -20,6 +25,7 @@ export interface Tunnel {
   tunnelId: string
   name: string
   active: boolean
+  accountId: string
   running: boolean
   credentialsFile: string
   hostnames: Hostname[]

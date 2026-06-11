@@ -1,7 +1,6 @@
-export interface Zone {
+export interface Account {
   id: string
-  zoneId: string
-  domain: string
+  name: string
   apiToken: string
 }
 
@@ -12,7 +11,7 @@ export interface Hostname {
   noTLSVerify: boolean
   httpHostHeader: string
   active: boolean
-  zoneId: string
+  cfZoneId: string
 }
 
 export interface Tunnel {
@@ -20,12 +19,13 @@ export interface Tunnel {
   tunnelId: string
   name: string
   active: boolean
+  accountId: string
   credentialsFile: string
   hostnames: Hostname[]
 }
 
 export interface AppConfig {
-  zones: Zone[]
+  accounts: Account[]
   tunnels: Tunnel[]
 }
 
@@ -50,4 +50,9 @@ export interface CloudflareApiRecord {
   name: string
   content: string
   proxied: boolean
+}
+
+export interface CfZone {
+  id: string
+  name: string
 }

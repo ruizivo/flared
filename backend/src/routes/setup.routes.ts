@@ -11,6 +11,7 @@ import {
   getAccountId,
   listCloudflareTunnels,
 } from '../services/cloudflare.service'
+import { getZonesForAccount } from '../services/zoneCache.service'
 import {
   hasCert,
   getCertPath,
@@ -63,7 +64,6 @@ export const setupRoutes = new Elysia({ prefix: '/setup' })
         const credPath = getCredentialsPath(tunnelId)
 
         if (!existsSync(credPath)) {
-          // cloudflared pode escrever em ~/.cloudflared/ ou no mesmo dir do cert (CONFIG_DIR)
           const home = process.env.HOME || '/root'
           const candidates = [
             join(home, '.cloudflared', `${tunnelId}.json`),
@@ -84,6 +84,7 @@ export const setupRoutes = new Elysia({ prefix: '/setup' })
           tunnelId,
           name: body.name,
           active: false,
+          accountId: body.accountId || config.accounts[0]?.id || '',
           credentialsFile: credPath,
           hostnames: [],
         }
@@ -99,7 +100,10 @@ export const setupRoutes = new Elysia({ prefix: '/setup' })
       }
     },
     {
-      body: t.Object({ name: t.String({ minLength: 1 }) }),
+      body: t.Object({
+        name: t.String({ minLength: 1 }),
+        accountId: t.Optional(t.String()),
+      }),
     }
   )
   .get('/version', async () => {
@@ -108,16 +112,21 @@ export const setupRoutes = new Elysia({ prefix: '/setup' })
   })
   .get('/tunnels/cloudflare', async ({ set }) => {
     const config = loadConfig()
-    if (config.zones.length === 0) {
+    if (config.accounts.length === 0) {
       set.status = 400
-      return { error: 'Nenhuma zone cadastrada. Adicione uma zone primeiro.' }
+      return { error: 'Nenhuma conta Cloudflare cadastrada. Adicione uma conta em Contas primeiro.' }
     }
 
-    const zone = config.zones[0]
+    const account = config.accounts[0]
     try {
-      const accountId = await getAccountId(zone.apiToken, zone.zoneId)
-      const cfTunnels = await listCloudflareTunnels(zone.apiToken, accountId)
+      const zones = await getZonesForAccount(account)
+      if (zones.length === 0) {
+        set.status = 400
+        return { error: 'Nenhuma zone encontrada na conta. Verifique as permissões do token.' }
+      }
 
+      const cfAccountId = await getAccountId(account.apiToken, zones[0].id)
+      const cfTunnels = await listCloudflareTunnels(account.apiToken, cfAccountId)
       const alreadyImported = new Set(config.tunnels.map(t => t.tunnelId))
 
       return cfTunnels.map(t => ({
@@ -173,6 +182,7 @@ export const setupRoutes = new Elysia({ prefix: '/setup' })
         tunnelId: body.tunnelId,
         name: body.name,
         active: false,
+        accountId: body.accountId || config.accounts[0]?.id || '',
         credentialsFile: credPath,
         hostnames: [],
       }
@@ -187,6 +197,7 @@ export const setupRoutes = new Elysia({ prefix: '/setup' })
       body: t.Object({
         tunnelId: t.String(),
         name: t.String(),
+        accountId: t.Optional(t.String()),
       }),
     }
   )

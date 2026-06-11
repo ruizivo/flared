@@ -1,7 +1,8 @@
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle, AlertCircle, Download } from 'lucide-react'
-import { setupApi } from '../services/api'
-import type { CloudflareTunnel } from '../types'
+import { setupApi, accountApi } from '../services/api'
+import type { CloudflareTunnel, Account } from '../types'
 import { Modal, Button, Badge, Spinner } from './ui'
 
 interface Props {
@@ -10,6 +11,16 @@ interface Props {
 
 export default function ImportTunnelModal({ onClose }: Props) {
   const qc = useQueryClient()
+  const [accountId, setAccountId] = useState('')
+
+  const { data: accounts = [] } = useQuery<Account[]>({
+    queryKey: ['accounts'],
+    queryFn: () => accountApi.list().then(r => r.data),
+  })
+
+  useEffect(() => {
+    if (accounts.length === 1) setAccountId(accounts[0].id)
+  }, [accounts])
 
   const { data: tunnels = [], isLoading, error } = useQuery<CloudflareTunnel[]>({
     queryKey: ['cf-tunnels'],
@@ -18,7 +29,7 @@ export default function ImportTunnelModal({ onClose }: Props) {
 
   const importMutation = useMutation({
     mutationFn: ({ tunnelId, name }: { tunnelId: string; name: string }) =>
-      setupApi.importTunnel(tunnelId, name),
+      setupApi.importTunnel(tunnelId, name, accountId || undefined),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tunnels'] })
       qc.invalidateQueries({ queryKey: ['cf-tunnels'] })
@@ -29,6 +40,22 @@ export default function ImportTunnelModal({ onClose }: Props) {
 
   return (
     <Modal open onClose={onClose} title="Importar tunnel do Cloudflare" size="lg">
+      {accounts.length > 1 && (
+        <div className="mb-4">
+          <label className="label">Associar a conta</label>
+          <select
+            value={accountId}
+            onChange={e => setAccountId(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-orange-500"
+          >
+            <option value="">Selecione uma conta</option>
+            {accounts.map(a => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex justify-center py-10">
           <Spinner />

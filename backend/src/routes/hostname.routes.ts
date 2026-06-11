@@ -5,6 +5,16 @@ import { loadConfig, saveConfig } from '../services/config.service'
 import { writeConfigYml } from '../services/configYml.service'
 import { restartTunnel, isTunnelRunning } from '../services/cloudflared.service'
 import { createCNAME, deleteCNAME } from '../services/cloudflare.service'
+import { getZonesForAccount, findZoneForHostname } from '../services/zoneCache.service'
+
+function getAccountForTunnel(tunnelId: string) {
+  const config = loadConfig()
+  const tunnel = config.tunnels.find(t => t.id === tunnelId)
+  if (!tunnel) return { error: 'Tunnel não encontrado' as const, tunnel: null, account: null, config }
+  const account = config.accounts.find(a => a.id === tunnel.accountId)
+  if (!account) return { error: 'Conta associada ao tunnel não encontrada' as const, tunnel, account: null, config }
+  return { error: null, tunnel, account, config }
+}
 
 export const hostnameRoutes = new Elysia({ prefix: '/tunnels/:tunnelId/hostnames' })
   .use(authMiddleware)
@@ -20,17 +30,22 @@ export const hostnameRoutes = new Elysia({ prefix: '/tunnels/:tunnelId/hostnames
   .post(
     '/',
     async ({ params, body, set }) => {
-      const config = loadConfig()
-      const tunnel = config.tunnels.find(t => t.id === params.tunnelId)
-      if (!tunnel) {
-        set.status = 404
-        return { error: 'Tunnel não encontrado' }
+      const { error, tunnel, account, config } = getAccountForTunnel(params.tunnelId)
+      if (!tunnel) { set.status = 404; return { error: 'Tunnel não encontrado' } }
+      if (!account) { set.status = 400; return { error: error || 'Conta não encontrada' } }
+
+      let zones: any[]
+      try {
+        zones = await getZonesForAccount(account)
+      } catch (err: any) {
+        set.status = 502
+        return { error: `Erro ao buscar zones da conta: ${err.message}` }
       }
 
-      const zone = config.zones.find(z => body.hostname.endsWith(z.domain))
+      const zone = findZoneForHostname(zones, body.hostname)
       if (!zone) {
         set.status = 400
-        return { error: `Nenhuma zone cadastrada cobre o domínio ${body.hostname}` }
+        return { error: `Nenhuma zone na conta "${account.name}" cobre o domínio ${body.hostname}` }
       }
 
       console.log(`[hostname] adicionando ${body.hostname} → ${body.service} (tunnel: ${tunnel.name})`)
@@ -42,11 +57,11 @@ export const hostnameRoutes = new Elysia({ prefix: '/tunnels/:tunnelId/hostnames
         noTLSVerify: body.noTLSVerify ?? false,
         httpHostHeader: body.httpHostHeader ?? body.hostname,
         active: true,
-        zoneId: zone.id,
+        cfZoneId: zone.id,
       }
 
       try {
-        await createCNAME(zone, body.hostname, tunnel.tunnelId)
+        await createCNAME(account.apiToken, zone.id, body.hostname, tunnel.tunnelId)
       } catch (err: any) {
         console.error(`[hostname] erro ao criar CNAME para ${body.hostname}: ${err.message}`)
         set.status = 500
@@ -112,23 +127,14 @@ export const hostnameRoutes = new Elysia({ prefix: '/tunnels/:tunnelId/hostnames
     }
   )
   .post('/:hostnameId/toggle', async ({ params, set }) => {
-    const config = loadConfig()
-    const tunnel = config.tunnels.find(t => t.id === params.tunnelId)
-    if (!tunnel) {
-      set.status = 404
-      return { error: 'Tunnel não encontrado' }
-    }
+    const { error, tunnel, account, config } = getAccountForTunnel(params.tunnelId)
+    if (!tunnel) { set.status = 404; return { error: 'Tunnel não encontrado' } }
+    if (!account) { set.status = 400; return { error: error || 'Conta não encontrada' } }
 
     const hostname = tunnel.hostnames.find(h => h.id === params.hostnameId)
     if (!hostname) {
       set.status = 404
       return { error: 'Hostname não encontrado' }
-    }
-
-    const zone = config.zones.find(z => z.id === hostname.zoneId)
-    if (!zone) {
-      set.status = 400
-      return { error: 'Zone não encontrada' }
     }
 
     const newState = !hostname.active
@@ -139,10 +145,10 @@ export const hostnameRoutes = new Elysia({ prefix: '/tunnels/:tunnelId/hostnames
     try {
       if (hostname.active) {
         console.log(`[hostname] criando CNAME para ${hostname.hostname}`)
-        await createCNAME(zone, hostname.hostname, tunnel.tunnelId)
+        await createCNAME(account.apiToken, hostname.cfZoneId, hostname.hostname, tunnel.tunnelId)
       } else {
         console.log(`[hostname] deletando CNAME para ${hostname.hostname}`)
-        await deleteCNAME(zone, hostname.hostname)
+        await deleteCNAME(account.apiToken, hostname.cfZoneId, hostname.hostname)
       }
     } catch (err: any) {
       hostname.active = !hostname.active
@@ -165,12 +171,8 @@ export const hostnameRoutes = new Elysia({ prefix: '/tunnels/:tunnelId/hostnames
     return hostname
   })
   .delete('/:hostnameId', async ({ params, set }) => {
-    const config = loadConfig()
-    const tunnel = config.tunnels.find(t => t.id === params.tunnelId)
-    if (!tunnel) {
-      set.status = 404
-      return { error: 'Tunnel não encontrado' }
-    }
+    const { error: accountError, tunnel, account, config } = getAccountForTunnel(params.tunnelId)
+    if (!tunnel) { set.status = 404; return { error: 'Tunnel não encontrado' } }
 
     const idx = tunnel.hostnames.findIndex(h => h.id === params.hostnameId)
     if (idx === -1) {
@@ -179,13 +181,11 @@ export const hostnameRoutes = new Elysia({ prefix: '/tunnels/:tunnelId/hostnames
     }
 
     const hostname = tunnel.hostnames[idx]
-    const zone = config.zones.find(z => z.id === hostname.zoneId)
-
     console.log(`[hostname] deletando ${hostname.hostname} (tunnel: ${tunnel.name})`)
 
-    if (zone) {
+    if (account && hostname.cfZoneId) {
       try {
-        await deleteCNAME(zone, hostname.hostname)
+        await deleteCNAME(account.apiToken, hostname.cfZoneId, hostname.hostname)
         console.log(`[hostname] CNAME de ${hostname.hostname} deletado`)
       } catch (err: any) {
         console.error(`[hostname] erro ao deletar CNAME de ${hostname.hostname}: ${err.message}`)

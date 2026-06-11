@@ -32,11 +32,12 @@ export const setupApi = {
   status: () => api.get<{ hasCert: boolean; hasTunnels: boolean }>('/setup/status'),
   startLogin: () => api.post<{ url?: string; alreadyLoggedIn?: boolean }>('/setup/login'),
   loginStatus: () => api.get<{ done: boolean }>('/setup/login/status'),
-  createTunnel: (name: string) => api.post('/setup/tunnel', { name }),
+  createTunnel: (name: string, accountId?: string) =>
+    api.post('/setup/tunnel', { name, accountId }),
   version: () => api.get<{ version: string }>('/setup/version'),
   listCloudflareTunnels: () => api.get('/setup/tunnels/cloudflare'),
-  importTunnel: (tunnelId: string, name: string) =>
-    api.post('/setup/tunnel/import', { tunnelId, name }),
+  importTunnel: (tunnelId: string, name: string, accountId?: string) =>
+    api.post('/setup/tunnel/import', { tunnelId, name, accountId }),
 }
 
 export const tunnelApi = {
@@ -68,12 +69,14 @@ export const hostnameApi = {
     api.delete(`/tunnels/${tunnelId}/hostnames/${hostnameId}`),
 }
 
-export const zoneApi = {
-  list: () => api.get('/zones'),
-  create: (data: { zoneId: string; apiToken: string; domain?: string }) =>
-    api.post('/zones', data),
-  update: (id: string, data: object) => api.put(`/zones/${id}`, data),
-  delete: (id: string) => api.delete(`/zones/${id}`),
+export const accountApi = {
+  list: () => api.get('/accounts'),
+  create: (data: { name: string; apiToken: string }) =>
+    api.post('/accounts', data),
+  update: (id: string, data: { name?: string; apiToken?: string }) =>
+    api.put(`/accounts/${id}`, data),
+  delete: (id: string) => api.delete(`/accounts/${id}`),
+  listZones: (accountId: string) => api.get(`/accounts/${accountId}/zones`),
 }
 
 export default api

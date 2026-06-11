@@ -7,7 +7,7 @@ import LoginPage from './pages/LoginPage'
 import SetupPage from './pages/SetupPage'
 import DashboardPage from './pages/DashboardPage'
 import TunnelsPage from './pages/TunnelsPage'
-import ZonesPage from './pages/ZonesPage'
+import AccountsPage from './pages/AccountsPage'
 import SettingsPage from './pages/SettingsPage'
 
 const queryClient = new QueryClient({
@@ -42,7 +42,7 @@ export default function App() {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="tunnels" element={<TunnelsPage />} />
-              <Route path="zones" element={<ZonesPage />} />
+              <Route path="accounts" element={<AccountsPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Routes>

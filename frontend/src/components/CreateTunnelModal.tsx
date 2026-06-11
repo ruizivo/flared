@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, ExternalLink } from 'lucide-react'
-import { setupApi } from '../services/api'
+import { setupApi, accountApi } from '../services/api'
+import type { Account } from '../types'
 import { Modal, Input, Button } from './ui'
 
 interface Props {
@@ -14,19 +15,29 @@ export default function CreateTunnelModal({ onClose }: Props) {
   const qc = useQueryClient()
   const [hasCert, setHasCert] = useState<boolean | null>(null)
   const [name, setName] = useState('')
+  const [accountId, setAccountId] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const { data: accounts = [] } = useQuery<Account[]>({
+    queryKey: ['accounts'],
+    queryFn: () => accountApi.list().then(r => r.data),
+  })
 
   useEffect(() => {
     setupApi.status().then(r => setHasCert(r.data.hasCert))
   }, [])
+
+  useEffect(() => {
+    if (accounts.length === 1) setAccountId(accounts[0].id)
+  }, [accounts])
 
   const handleCreate = async () => {
     if (!name.trim()) return
     setLoading(true)
     setError('')
     try {
-      await setupApi.createTunnel(name.trim())
+      await setupApi.createTunnel(name.trim(), accountId || undefined)
       qc.invalidateQueries({ queryKey: ['tunnels'] })
       onClose()
     } catch (err: any) {
@@ -57,6 +68,7 @@ export default function CreateTunnelModal({ onClose }: Props) {
           <p className="text-gray-400 text-sm">
             O nome é usado internamente no Cloudflare para identificar o tunnel.
           </p>
+
           <Input
             label="Nome do tunnel"
             placeholder="ex: homelab-tunnel"
@@ -65,6 +77,36 @@ export default function CreateTunnelModal({ onClose }: Props) {
             onKeyDown={e => e.key === 'Enter' && handleCreate()}
             autoFocus
           />
+
+          {accounts.length > 1 && (
+            <div>
+              <label className="label">Conta Cloudflare</label>
+              <select
+                value={accountId}
+                onChange={e => setAccountId(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-orange-500"
+              >
+                <option value="">Selecione uma conta</option>
+                {accounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {accounts.length === 0 && (
+            <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-3 text-yellow-400 text-sm">
+              Nenhuma conta Cloudflare cadastrada. Adicione uma em{' '}
+              <button
+                className="underline font-medium"
+                onClick={() => { onClose(); navigate('/accounts') }}
+              >
+                Contas
+              </button>{' '}
+              primeiro.
+            </div>
+          )}
+
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <div className="flex gap-3 justify-end">
             <Button variant="secondary" onClick={onClose}>Cancelar</Button>

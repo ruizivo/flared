@@ -1,12 +1,12 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Network, Globe, Settings, LogOut, Flame, Activity } from 'lucide-react'
+import { Network, User, Settings, LogOut, Flame, Activity } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import clsx from 'clsx'
 
 const nav = [
   { to: '/dashboard', icon: Activity, label: 'Dashboard' },
   { to: '/tunnels', icon: Network, label: 'Tunnels' },
-  { to: '/zones', icon: Globe, label: 'Zones' },
+  { to: '/accounts', icon: User, label: 'Contas' },
   { to: '/settings', icon: Settings, label: 'Config' },
 ]
 

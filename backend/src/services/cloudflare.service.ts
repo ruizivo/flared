@@ -1,4 +1,4 @@
-import type { CloudflareApiRecord, Zone } from '../types'
+import type { CloudflareApiRecord, CfZone } from '../types'
 
 const CF_API = 'https://api.cloudflare.com/client/v4'
 
@@ -31,18 +31,18 @@ export async function validateToken(token: string): Promise<boolean> {
   }
 }
 
-export async function getZoneDetails(token: string, zoneId: string) {
-  return cfFetch(token, `/zones/${zoneId}`)
+export async function listZones(token: string): Promise<CfZone[]> {
+  const zones = await cfFetch(token, '/zones?per_page=100')
+  return (zones || []).map((z: any) => ({ id: z.id, name: z.name }))
 }
 
-export async function createCNAME(zone: Zone, hostname: string, tunnelId: string): Promise<string> {
-  console.log(`[cloudflare-api] criando CNAME: ${hostname} → ${tunnelId}.cfargotunnel.com (zone: ${zone.domain})`)
-  const subdomain = hostname.replace(`.${zone.domain}`, '')
-  const record = await cfFetch(zone.apiToken, `/zones/${zone.zoneId}/dns_records`, {
+export async function createCNAME(token: string, cfZoneId: string, hostname: string, tunnelId: string): Promise<string> {
+  console.log(`[cloudflare-api] criando CNAME: ${hostname} → ${tunnelId}.cfargotunnel.com`)
+  const record = await cfFetch(token, `/zones/${cfZoneId}/dns_records`, {
     method: 'POST',
     body: JSON.stringify({
       type: 'CNAME',
-      name: subdomain,
+      name: hostname,
       content: `${tunnelId}.cfargotunnel.com`,
       proxied: true,
       ttl: 1,
@@ -52,35 +52,28 @@ export async function createCNAME(zone: Zone, hostname: string, tunnelId: string
   return record.id
 }
 
-export async function deleteCNAME(zone: Zone, hostname: string): Promise<void> {
-  console.log(`[cloudflare-api] deletando CNAME: ${hostname} (zone: ${zone.domain})`)
-  const records = await listCNAMEs(zone, hostname)
+export async function deleteCNAME(token: string, cfZoneId: string, hostname: string): Promise<void> {
+  console.log(`[cloudflare-api] deletando CNAME: ${hostname}`)
+  const records = await listCNAMEs(token, cfZoneId, hostname)
   if (records.length === 0) {
     console.log(`[cloudflare-api] nenhum CNAME encontrado para ${hostname}`)
     return
   }
   for (const record of records) {
-    await cfFetch(zone.apiToken, `/zones/${zone.zoneId}/dns_records/${record.id}`, {
+    await cfFetch(token, `/zones/${cfZoneId}/dns_records/${record.id}`, {
       method: 'DELETE',
     })
     console.log(`[cloudflare-api] CNAME ${record.id} deletado`)
   }
 }
 
-export async function listCNAMEs(zone: Zone, hostname?: string): Promise<CloudflareApiRecord[]> {
-  const query = hostname
-    ? `?type=CNAME&name=${hostname}`
-    : `?type=CNAME`
-  return cfFetch(zone.apiToken, `/zones/${zone.zoneId}/dns_records${query}`)
+export async function listCNAMEs(token: string, cfZoneId: string, hostname?: string): Promise<CloudflareApiRecord[]> {
+  const query = hostname ? `?type=CNAME&name=${hostname}` : `?type=CNAME`
+  return cfFetch(token, `/zones/${cfZoneId}/dns_records${query}`)
 }
 
-export async function cnameExists(zone: Zone, hostname: string): Promise<boolean> {
-  const records = await listCNAMEs(zone, hostname)
-  return records.length > 0
-}
-
-export async function getAccountId(token: string, zoneId: string): Promise<string> {
-  const zone = await cfFetch(token, `/zones/${zoneId}`)
+export async function getAccountId(token: string, cfZoneId: string): Promise<string> {
+  const zone = await cfFetch(token, `/zones/${cfZoneId}`)
   return zone.account.id
 }
 
