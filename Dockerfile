@@ -9,7 +9,7 @@ RUN cd backend && bun install --frozen-lockfile
 
 # instala dependências e faz build do frontend
 COPY frontend/package.json frontend/bun.lock* ./frontend/
-RUN cd frontend && bun install --frozen-lockfile
+RUN cd frontend && bun install
 
 COPY frontend/ ./frontend/
 RUN cd frontend && bun run build

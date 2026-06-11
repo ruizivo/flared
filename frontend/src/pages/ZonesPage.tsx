@@ -42,13 +42,13 @@ export default function ZonesPage() {
   })
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 md:p-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white">Zones</h1>
           <p className="text-gray-400 text-sm mt-1">Domínios Cloudflare configurados</p>
         </div>
-        <Button onClick={() => setAddOpen(true)}>
+        <Button onClick={() => setAddOpen(true)} className="shrink-0 self-start sm:self-auto">
           <Plus className="w-4 h-4" />
           Adicionar zone
         </Button>
@@ -71,16 +71,16 @@ export default function ZonesPage() {
       ) : (
         <div className="space-y-3">
           {zones.map(zone => (
-            <div key={zone.id} className="card flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Globe className="w-4 h-4 text-orange-500" />
-                <div>
-                  <p className="text-white font-medium">{zone.domain}</p>
-                  <p className="text-gray-500 text-xs font-mono">{zone.zoneId}</p>
+            <div key={zone.id} className="card flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                <Globe className="w-4 h-4 text-orange-500 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-white font-medium truncate">{zone.domain}</p>
+                  <p className="text-gray-500 text-xs font-mono truncate hidden sm:block">{zone.zoneId}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Badge variant="green">Configurado</Badge>
+              <div className="flex items-center gap-2 shrink-0">
+                <Badge variant="green" className="hidden sm:inline-flex">Configurado</Badge>
                 <Button
                   variant="ghost"
                   size="sm"

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Network, Globe, Activity, RefreshCw } from 'lucide-react'
-import { tunnelApi, setupApi } from '../services/api'
+import { tunnelApi } from '../services/api'
 import type { Tunnel } from '../types'
 import { Badge, Button, Spinner } from '../components/ui'
 import { useState } from 'react'
@@ -38,8 +38,8 @@ export default function DashboardPage() {
   const activeHostnames = tunnels.reduce((acc, t) => acc + t.hostnames.filter(h => h.active).length, 0)
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
+    <div className="p-4 md:p-8">
+      <div className="mb-6 md:mb-8">
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
         <p className="text-gray-400 text-sm mt-1">Visão geral da sua infraestrutura</p>
       </div>
@@ -49,7 +49,7 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 md:mb-8">
             <div className="card">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-gray-400 text-sm">Tunnels ativos</span>
@@ -103,19 +103,19 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-3">
                 {tunnels.map(tunnel => (
-                  <div key={tunnel.id} className="card flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-2 h-2 rounded-full ${tunnel.running ? 'bg-green-400' : 'bg-gray-600'}`} />
-                      <div>
-                        <p className="text-white font-medium">{tunnel.name}</p>
-                        <p className="text-gray-500 text-xs font-mono">{tunnel.tunnelId}</p>
+                  <div key={tunnel.id} className="card flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${tunnel.running ? 'bg-green-400' : 'bg-gray-600'}`} />
+                      <div className="min-w-0">
+                        <p className="text-white font-medium truncate">{tunnel.name}</p>
+                        <p className="text-gray-500 text-xs font-mono truncate hidden sm:block">{tunnel.tunnelId}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 shrink-0">
                       <Badge variant={tunnel.running ? 'green' : 'gray'}>
                         {tunnel.running ? 'Rodando' : 'Parado'}
                       </Badge>
-                      <span className="text-gray-500 text-xs">
+                      <span className="text-gray-500 text-xs hidden sm:inline">
                         {tunnel.hostnames.filter(h => h.active).length} hostname(s)
                       </span>
                     </div>

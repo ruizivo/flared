@@ -95,16 +95,17 @@ export function Toggle({ checked, onChange, disabled }: ToggleProps) {
 interface BadgeProps {
   variant: 'green' | 'red' | 'gray' | 'orange'
   children: ReactNode
+  className?: string
 }
 
-export function Badge({ variant, children }: BadgeProps) {
+export function Badge({ variant, children, className }: BadgeProps) {
   const variants = {
     green: 'badge-green',
     red: 'badge-red',
     gray: 'badge-gray',
     orange: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-900/50 text-orange-400 border border-orange-800',
   }
-  return <span className={variants[variant]}>{children}</span>
+  return <span className={clsx(variants[variant], className)}>{children}</span>
 }
 
 // Modal

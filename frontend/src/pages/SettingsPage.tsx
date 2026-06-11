@@ -28,8 +28,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
+    <div className="p-4 md:p-8">
+      <div className="mb-6 md:mb-8">
         <h1 className="text-2xl font-bold text-white">Configurações</h1>
         <p className="text-gray-400 text-sm mt-1">Gerenciamento do sistema</p>
       </div>

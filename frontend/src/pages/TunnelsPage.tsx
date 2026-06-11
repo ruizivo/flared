@@ -61,27 +61,28 @@ export default function TunnelsPage() {
 
   if (isLoading) {
     return (
-      <div className="p-8 flex justify-center pt-24">
+      <div className="p-4 md:p-8 flex justify-center pt-24">
         <Spinner />
       </div>
     )
   }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 md:p-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white">Tunnels</h1>
           <p className="text-gray-400 text-sm mt-1">Gerencie seus Cloudflare Tunnels</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Button variant="secondary" onClick={() => setShowImport(true)}>
             <Download className="w-4 h-4" />
-            Importar
+            <span className="hidden sm:inline">Importar</span>
           </Button>
           <Button onClick={() => setShowCreate(true)}>
             <FolderPlus className="w-4 h-4" />
-            Criar tunnel
+            <span className="hidden sm:inline">Criar tunnel</span>
           </Button>
         </div>
       </div>
@@ -97,26 +98,26 @@ export default function TunnelsPage() {
           {tunnels.map(tunnel => (
             <div key={tunnel.id} className="card p-0 overflow-hidden">
               {/* Header do tunnel */}
-              <div className="flex items-center justify-between p-5">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between p-4 md:p-5 gap-2">
+                <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
                   <button
                     onClick={() => setExpanded(expanded === tunnel.id ? null : tunnel.id)}
-                    className="text-gray-400 hover:text-gray-200"
+                    className="text-gray-400 hover:text-gray-200 shrink-0"
                   >
                     {expanded === tunnel.id
                       ? <ChevronDown className="w-4 h-4" />
                       : <ChevronRight className="w-4 h-4" />
                     }
                   </button>
-                  <div className={`w-2 h-2 rounded-full ${tunnel.running ? 'bg-green-400 shadow-sm shadow-green-400' : 'bg-gray-600'}`} />
-                  <div>
-                    <p className="text-white font-medium">{tunnel.name}</p>
-                    <p className="text-gray-500 text-xs font-mono">{tunnel.tunnelId}</p>
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${tunnel.running ? 'bg-green-400 shadow-sm shadow-green-400' : 'bg-gray-600'}`} />
+                  <div className="min-w-0">
+                    <p className="text-white font-medium truncate">{tunnel.name}</p>
+                    <p className="text-gray-500 text-xs font-mono truncate hidden sm:block">{tunnel.tunnelId}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Badge variant={tunnel.running ? 'green' : 'gray'}>
+                <div className="flex items-center gap-1 md:gap-2 shrink-0">
+                  <Badge variant={tunnel.running ? 'green' : 'gray'} className="hidden sm:inline-flex">
                     {tunnel.running ? 'Rodando' : 'Parado'}
                   </Badge>
 
@@ -176,7 +177,7 @@ export default function TunnelsPage() {
               {/* Hostnames expandidos */}
               {expanded === tunnel.id && (
                 <div className="border-t border-gray-800">
-                  <div className="flex items-center justify-between px-5 py-3 bg-gray-800/30">
+                  <div className="flex items-center justify-between px-4 md:px-5 py-3 bg-gray-800/30">
                     <span className="text-gray-400 text-sm font-medium">
                       Hostnames ({tunnel.hostnames.length})
                     </span>
@@ -191,13 +192,13 @@ export default function TunnelsPage() {
                   </div>
 
                   {tunnel.hostnames.length === 0 ? (
-                    <div className="px-5 py-8 text-center">
+                    <div className="px-4 md:px-5 py-8 text-center">
                       <p className="text-gray-500 text-sm">Nenhum hostname configurado</p>
                     </div>
                   ) : (
                     <div className="divide-y divide-gray-800/50">
                       {tunnel.hostnames.map((h: Hostname) => (
-                        <div key={h.id} className="flex items-center justify-between px-5 py-3">
+                        <div key={h.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 md:px-5 py-3 gap-2">
                           <div className="flex items-center gap-3 min-w-0">
                             <Toggle
                               checked={h.active}
@@ -211,7 +212,7 @@ export default function TunnelsPage() {
                               <p className="text-gray-500 text-xs truncate">{h.service}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 ml-4 shrink-0">
+                          <div className="flex items-center gap-2 ml-10 sm:ml-4 shrink-0">
                             {h.noTLSVerify && (
                               <Badge variant="orange">noTLS</Badge>
                             )}
@@ -241,7 +242,6 @@ export default function TunnelsPage() {
         </div>
       )}
 
-      {/* Modal logs */}
       {logsModal && (
         <LogsModal
           tunnel={logsModal}
@@ -249,7 +249,6 @@ export default function TunnelsPage() {
         />
       )}
 
-      {/* Modal adicionar hostname */}
       {addHostname && (
         <HostnameForm
           tunnel={addHostname}
@@ -261,17 +260,14 @@ export default function TunnelsPage() {
         />
       )}
 
-      {/* Modal criar tunnel */}
       {showCreate && (
         <CreateTunnelModal onClose={() => setShowCreate(false)} />
       )}
 
-      {/* Modal importar tunnel */}
       {showImport && (
         <ImportTunnelModal onClose={() => setShowImport(false)} />
       )}
 
-      {/* Modal confirmar delete tunnel */}
       <Modal
         open={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}
